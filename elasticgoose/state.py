@@ -1,4 +1,6 @@
 from typing import Dict, Union, Tuple, Optional
+from abc import ABC, abstractmethod
+import copy
 
 import torch
 from torch import nn
@@ -11,19 +13,22 @@ NonSpecialState = torch.Tensor
 StateType = Union[SpecialState, NonSpecialState]
 
 
-class StateHandler:
-    """Handle syncronization of state across workers. """
+class StateHandler(ABC):
+    """Handle syncronization of state across workers."""
     def __init__(self, value: StateType):
         self.value = value
 
+    @abstractmethod
     def save(self):
-        """Save the current value to host memory"""
+        """Save the current value to host memory."""
         raise NotImplementedError("Honk honk! This isn't implemented yet.")
 
+    @abstractmethod
     def restore(self):
-        """Restore the last commited across workers"""
+        """Restore the last commited across workers."""
         raise NotImplementedError("Honk honk! This isn't implemented yet.")
 
+    @abstractmethod
     def sync(self):
         """Syncronize state across workers."""
         raise NotImplementedError("Honk honk! This isn't implemented yet.")
@@ -31,12 +36,22 @@ class StateHandler:
     def set_value(self, value: StateType):
         """Set the current value of the state."""
         self.value = value
-        raise NotImplementedError("Honk honk! This isn't implemented yet.")
+        self.save()
 
 
 class ModelStateHandler(StateHandler):
+    """Handle syncronization of model state across workers."""
     def __init__(self, model: nn.Module):
-        super().__init__(model.state_dict())
+        super().__init__(value=model)
+
+    def save(self):
+        self._model_state = copy.deepcopy(self.value.state_dict())
+
+    def restore(self):
+        self.value = self.value.load_state_dict(self._model_state)
+
+    def sync(self):
+        pass
 
 
 _HANDLER_REGISTRY = [
