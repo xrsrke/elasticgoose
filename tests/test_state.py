@@ -21,8 +21,8 @@ def test_get_handlers():
 
 
 def test_model_state_handler():
-    model = nn.Sequential(nn.Linear(10, 10), nn.Linear(10, 10))
-    MODEL_WEIGHTS = model.state_dict()
+    model = nn.Sequential(nn.Linear(2, 2))
+    MODEL_WEIGHTS = model.state_dict().values()
 
     NEW_MODEL = nn.Sequential(nn.Linear(2, 2))
     NEW_MODEL.load_state_dict({
@@ -31,7 +31,21 @@ def test_model_state_handler():
     })
 
     handler = ModelStateHandler(model)
+
+    # set a new value, but haven't commited and then restore
     handler.set_value(NEW_MODEL)
+    handler.restore()
+
+    for w1, w2 in zip(handler.value.parameters(), MODEL_WEIGHTS):
+        assert torch.allclose(w1, w2)
+
+    # set a new value, then commit and restore
+    handler.set_value(NEW_MODEL)
+    handler.commit()
+    handler.restore()
+
+    for w1, w2 in zip(handler.value.parameters(), NEW_MODEL.parameters()):
+        assert torch.allclose(w1, w2)
 
     # TODO: seems there's a bug after you set a new value
     # you shouldn't store it as a backup unless .commit() is called
@@ -52,7 +66,7 @@ def test_init_state():
     assert state.batch == 0
 
 
-def test_sync_state():
+def test_commit_and_restore_state_single_node():
     model = nn.Sequential(nn.Linear(2, 2))
     MODEL_WEIGHTS = model.state_dict().values()
     EPOCH, BATCH = 2, 5
@@ -69,7 +83,6 @@ def test_sync_state():
         model, optim,
         epoch=EPOCH, batch=BATCH
     )
-    # state.sync()
 
     # update the model, but hanve't commited and then restore
     model.load_state_dict(NEW_MODEL.state_dict())
@@ -95,3 +108,7 @@ def test_sync_state():
         assert torch.allclose(w1, w2)
     assert state.epoch == EPOCH + 1
     assert state.batch == BATCH + 1
+
+
+def test_sync_state_multi_process():
+    pass

@@ -36,7 +36,8 @@ class StateHandler(ABC):
     def set_value(self, value: StateType):
         """Set the current value of the state."""
         self.value = value
-        self.commit()
+        # TODO: why horovod commit it?
+        # self.commit()
 
 
 class ModelStateHandler(StateHandler):

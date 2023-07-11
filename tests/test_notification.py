@@ -1,4 +1,4 @@
-from elasticgoose.elastic.notification import NotificationManager
+from elasticgoose.notification import NotificationManager
 
 import pytest
 
