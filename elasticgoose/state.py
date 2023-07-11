@@ -19,8 +19,8 @@ class StateHandler(ABC):
         self.value = value
 
     @abstractmethod
-    def save(self):
-        """Save the current value to host memory."""
+    def commit(self):
+        """Save the current value for backup."""
         raise NotImplementedError("Honk honk! This isn't implemented yet.")
 
     @abstractmethod
@@ -36,7 +36,7 @@ class StateHandler(ABC):
     def set_value(self, value: StateType):
         """Set the current value of the state."""
         self.value = value
-        self.save()
+        self.commit()
 
 
 class ModelStateHandler(StateHandler):
@@ -44,11 +44,14 @@ class ModelStateHandler(StateHandler):
     def __init__(self, model: nn.Module):
         super().__init__(value=model)
 
-    def save(self):
+        # store this as an initial commit
+        self._model_state = copy.deepcopy(self.value.state_dict())
+
+    def commit(self):
         self._model_state = copy.deepcopy(self.value.state_dict())
 
     def restore(self):
-        self.value = self.value.load_state_dict(self._model_state)
+        self.value.load_state_dict(self._model_state)
 
     def sync(self):
         pass
@@ -58,7 +61,7 @@ class OptimizerStateHandler(StateHandler):
     def __init__(self, optim: optim.Optimizer):
         super().__init__(value=optim)
 
-    def save(self):
+    def commit(self):
         pass
 
     def restore(self):
@@ -170,7 +173,7 @@ class State(RegularState):
         """Commit the current value for backup."""
         for handler in self._handlers.values():
             handler.commit()
-        RegularState.commit()
+        RegularState.commit(self)
 
     def restore(self):
         """Restore the last commited across workers."""
@@ -178,7 +181,7 @@ class State(RegularState):
         # a special handler
         for handler in self._handlers.values():
             handler.restore()
-        RegularState.restore()
+        RegularState.restore(self)
 
     def reset(self):
         # TODO: implement it
@@ -187,4 +190,4 @@ class State(RegularState):
     def sync(self):
         for handler in self._handlers.values():
             handler.sync()
-        RegularState.sync()
+        RegularState.sync(self)
