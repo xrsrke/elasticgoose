@@ -55,8 +55,7 @@ def test_init_state():
 def test_sync_state():
     model = nn.Sequential(nn.Linear(2, 2))
     MODEL_WEIGHTS = model.state_dict().values()
-    EPOCH = 2
-    BATCH = 5
+    EPOCH, BATCH = 2, 5
 
     NEW_MODEL = nn.Sequential(nn.Linear(2, 2))
     NEW_MODEL.load_state_dict({
@@ -64,29 +63,27 @@ def test_sync_state():
         "0.bias": torch.tensor([5.0, 6.0]),
     })
 
-    # optim = torch.optim.Adam(model.parameters(), lr=0.01)
+    optim = torch.optim.Adam(model.parameters(), lr=0.01)
 
     state = State(
-        model,
-        # optim,
+        model, optim,
         epoch=EPOCH, batch=BATCH
     )
     # state.sync()
 
-    # modify the model and then restore
+    # update the model, but hanve't commited and then restore
     model.load_state_dict(NEW_MODEL.state_dict())
     state.batch += 1
     state.epoch += 1
 
     state.restore()
 
-    for new_weight, orig_weight in zip(model.parameters(), MODEL_WEIGHTS):
-        assert torch.allclose(new_weight, orig_weight)
+    for w1, w2 in zip(model.parameters(), MODEL_WEIGHTS):
+        assert torch.allclose(w1, w2)
     assert state.epoch == EPOCH
     assert state.batch == BATCH
 
-
-    # modify the model and then commit
+    # update the model, then commit and restore
     model.load_state_dict(NEW_MODEL.state_dict())
     state.batch += 1
     state.epoch += 1
@@ -94,7 +91,7 @@ def test_sync_state():
     state.commit()
     state.restore()
 
-    for new_weight, orig_weight in zip(model.parameters(), NEW_MODEL.parameters()):
-        assert torch.allclose(new_weight, orig_weight)
+    for w1, w2 in zip(model.parameters(), NEW_MODEL.parameters()):
+        assert torch.allclose(w1, w2)
     assert state.epoch == EPOCH + 1
     assert state.batch == BATCH + 1

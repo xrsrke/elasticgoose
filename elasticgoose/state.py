@@ -81,7 +81,7 @@ def get_handler_registry():
     return _HANDLER_REGISTRY
 
 
-def get_handler(v: StateType) -> Optional[SpecialState]:
+def _get_handler(v: StateType) -> Optional[SpecialState]:
     for handler_type, handler_cls in get_handler_registry():
         if isinstance(v, handler_type):
             return handler_cls(v)
@@ -93,7 +93,7 @@ def get_handlers(states: Dict[str, StateType]) -> Tuple[Dict[str, StateHandler],
     remainders = {}
 
     for key, value in states.items():
-        handler = get_handler(value)
+        handler = _get_handler(value)
         if handler is None:
             remainders[key] = value
         else:
@@ -125,9 +125,11 @@ class ObjectState(ABC):
 
 
 class RegularState(ObjectState):
+    """For states that don't require special handlers."""
     def __init__(self, states: Dict[str, NonSpecialState]):
         self._saved_states = states
-        self._set_initial_commit()
+        for key, value in self._saved_states.items():
+            setattr(self, key, value)
 
     def commit(self):
         new_states = {}
@@ -136,20 +138,14 @@ class RegularState(ObjectState):
         self._saved_states = new_states
 
     def restore(self):
-        self._set_backup_states_to_current_state()
+        for key, value in self._saved_states.items():
+            setattr(self, key, value)
 
     def reset(self):
         pass
 
     def sync(self):
         pass
-
-    def _set_initial_commit(self):
-        self._set_backup_states_to_current_state()
-
-    def _set_backup_states_to_current_state(self):
-        for key, value in self._saved_states.items():
-            setattr(self, key, value)
 
 
 class State(RegularState):
