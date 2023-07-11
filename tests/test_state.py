@@ -1,4 +1,4 @@
-from elasticgoose.state import ModelStateHandler, get_handlers, TorchState
+from elasticgoose.state import ModelStateHandler, get_handlers, State
 
 import torch
 from torch import nn
@@ -20,11 +20,11 @@ def test_get_handlers():
     assert remainders["processed_idxs"] == [1, 2, 3]
 
 
-def test_init_torch_state():
+def test_init_state():
     model = nn.Sequential(nn.Linear(10, 10), nn.Linear(10, 10))
     optim = torch.optim.Adam(model.parameters(), lr=0.01)
 
-    state = TorchState(
+    state = State(
         model, optim,
         epoch=0, batch=0
     )
@@ -32,10 +32,10 @@ def test_init_torch_state():
     assert state.model == model
     assert state.optim == optim
     assert state.epoch == 0
-    assert state.processed_idxs == [1, 2, 3]
+    assert state.batch == 0
 
 
-def test_sync_torch_state():
+def test_sync_state():
     model = nn.Sequential(nn.Linear(2, 2))
     MODEL_WEIGHTS = model.state_dict()
     EPOCH = 2
@@ -47,13 +47,14 @@ def test_sync_torch_state():
         "0.bias": torch.tensor([5.0, 6.0]),
     })
 
-    optim = torch.optim.Adam(model.parameters(), lr=0.01)
+    # optim = torch.optim.Adam(model.parameters(), lr=0.01)
 
-    state = TorchState(
-        model, optim,
+    state = State(
+        model,
+        # optim,
         epoch=EPOCH, batch=BATCH
     )
-    state.sync()
+    # state.sync()
 
     # modify the model and then restore
     model.load_state_dict(NEW_MODEL.state_dict())

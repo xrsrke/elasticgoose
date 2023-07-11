@@ -54,9 +54,23 @@ class ModelStateHandler(StateHandler):
         pass
 
 
+class OptimizerStateHandler(StateHandler):
+    def __init__(self, optim: optim.Optimizer):
+        super().__init__(value=optim)
+
+    def save(self):
+        pass
+
+    def restore(self):
+        pass
+
+    def sync(self):
+        pass
+
+
 _HANDLER_REGISTRY = [
     (nn.Module, ModelStateHandler),
-    # optim.Optimizer, OptimizerStateHandler,
+    (optim.Optimizer, OptimizerStateHandler)
 ]
 
 
@@ -71,7 +85,7 @@ def get_handler(v: StateType) -> Optional[SpecialState]:
     return None
 
 
-def get_handlers(states: Dict[str, StateType]) -> Tuple[Dict[str, SpecialState], Dict[str, NonSpecialState]]:
+def get_handlers(states: Dict[str, StateType]) -> Tuple[Dict[str, StateHandler], Dict[str, NonSpecialState]]:
     handlers = {}
     remainders = {}
 
@@ -83,3 +97,94 @@ def get_handlers(states: Dict[str, StateType]) -> Tuple[Dict[str, SpecialState],
             handlers[key] = handler
 
     return handlers, remainders
+
+
+class ObjectState(ABC):
+    @staticmethod
+    def commit(self):
+        """Commit the current value for backup."""
+        raise NotImplementedError("Honk honk! This isn't implemented yet.")
+
+    @staticmethod
+    def restore(self):
+        """Restore the last commited across workers."""
+        raise NotImplementedError("Honk honk! This isn't implemented yet.")
+
+    @abstractmethod
+    def reset(self):
+        """Reset the state to the initial state."""
+        raise NotImplementedError("Honk honk! This isn't implemented yet.")
+
+    @abstractmethod
+    def sync(self):
+        """Syncronize state across workers."""
+        raise NotImplementedError("Honk honk! This isn't implemented yet.")
+
+
+class RegularState(ObjectState):
+    def __init__(self, states: Dict[str, NonSpecialState]):
+        self._saved_states = states
+        self._set_initial_commit()
+
+    def commit(self):
+        new_states = {}
+        for key in self._saved_states.keys():
+            new_states[key] = getattr(self, key)
+        self._saved_states = new_states
+
+    def restore(self):
+        self._set_backup_states_to_current_state()
+
+    def reset(self):
+        pass
+
+    def sync(self):
+        pass
+
+    def _set_initial_commit(self):
+        self._set_backup_states_to_current_state()
+
+    def _set_backup_states_to_current_state(self):
+        for key, value in self._saved_states.items():
+            setattr(self, key, value)
+
+
+class State(RegularState):
+    """A wrapper for state that can be synced across workers."""
+    def __init__(
+        self,
+        model: Optional[nn.Module] = None,
+        optim: Optional[optim.Optimizer] = None,
+        **kwargs
+    ):
+        kwargs.update({"model": model, "optim": optim})
+        handlers, regular_states = get_handlers(kwargs)
+
+        self._handlers: Dict[str, StateHandler] = handlers
+        RegularState.__init__(self, states=regular_states)
+
+        for name, handler in self._handlers.items():
+            setattr(self, name, handler.value)
+
+    def commit(self):
+        """Commit the current value for backup."""
+        for handler in self._handlers.values():
+            handler.commit()
+        RegularState.commit()
+
+    def restore(self):
+        """Restore the last commited across workers."""
+        # restore syncronous states that requires
+        # a special handler
+        for handler in self._handlers.values():
+            handler.restore()
+        RegularState.restore()
+
+    def reset(self):
+        # TODO: implement it
+        pass
+
+    def sync(self):
+        for handler in self._handlers.values():
+            handler.sync()
+        RegularState.sync()
