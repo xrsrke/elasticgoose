@@ -20,7 +20,7 @@ def test_get_handlers():
     assert remainders["processed_idxs"] == [1, 2, 3]
 
 
-def test_model_state_handler():
+def test_commit_and_restore_model_state_handler():
     model = nn.Sequential(nn.Linear(2, 2))
     MODEL_WEIGHTS = model.state_dict().values()
 
@@ -31,6 +31,8 @@ def test_model_state_handler():
     })
 
     handler = ModelStateHandler(model)
+
+    assert handler.value == model
 
     # set a new value, but haven't commited and then restore
     handler.set_value(NEW_MODEL)
@@ -44,8 +46,12 @@ def test_model_state_handler():
     handler.commit()
     handler.restore()
 
+    assert handler.value == NEW_MODEL
+
     for w1, w2 in zip(handler.value.parameters(), NEW_MODEL.parameters()):
         assert torch.allclose(w1, w2)
+
+    # TODO: test commit and then delete the original object
 
     # TODO: seems there's a bug after you set a new value
     # you shouldn't store it as a backup unless .commit() is called
@@ -108,6 +114,9 @@ def test_commit_and_restore_state_single_node():
         assert torch.allclose(w1, w2)
     assert state.epoch == EPOCH + 1
     assert state.batch == BATCH + 1
+
+    # TODO: update through State.attribute
+    # for both special handlers and regular states
 
 
 def test_sync_state_multi_process():
