@@ -5,7 +5,7 @@ from typing import Tuple
 from elasticgoose.constant import NETWORK_MIN_PORT, NETWORK_MAX_PORT
 
 
-def find_port(server_factory: socketserver.BaseServer) -> Tuple[
+def find_port_and_create_a_socket_server(server_factory: socketserver.BaseServer) -> Tuple[
     socketserver.BaseServer, int
 ]:
     """Find a free port and return a server instance bound to it."""
@@ -24,7 +24,7 @@ def find_port(server_factory: socketserver.BaseServer) -> Tuple[
 
 class BaseService:
     def __init__(self):
-        self._server = find_port(lambda add: socketserver.TCPServer(add, self._handler))
+        self._server = find_port_and_create_a_socket_server(lambda add: socketserver.TCPServer(add, self._handler))
 
     def _probe(self, addresses):
         pass
