@@ -1,11 +1,9 @@
-from typing import Dict, Union, Tuple, Optional
-from abc import ABC, abstractmethod
 import copy
+from abc import ABC, abstractmethod
+from typing import Dict, Optional, Tuple, Union
 
 import torch
-from torch import nn
-from torch import optim
-
+from torch import nn, optim
 
 SpecialState = Union[nn.Module, optim.Optimizer]
 NonSpecialState = torch.Tensor
@@ -14,7 +12,8 @@ StateType = Union[SpecialState, NonSpecialState]
 
 
 class StateHandler(ABC):
-    """Handle syncronization of state across workers."""
+    """Handle synchronization of state across workers."""
+
     def __init__(self, value: StateType):
         self.value = value
 
@@ -25,12 +24,12 @@ class StateHandler(ABC):
 
     @abstractmethod
     def restore(self):
-        """Restore the last commited across workers."""
+        """Restore the last committed across workers."""
         raise NotImplementedError("Honk honk! This isn't implemented yet.")
 
     @abstractmethod
     def sync(self):
-        """Syncronize state across workers."""
+        """Synchronize state across workers."""
         raise NotImplementedError("Honk honk! This isn't implemented yet.")
 
     def set_value(self, value: StateType):
@@ -41,7 +40,8 @@ class StateHandler(ABC):
 
 
 class ModelStateHandler(StateHandler):
-    """Handle syncronization of model state across workers."""
+    """Handle synchronization of model state across workers."""
+
     def __init__(self, model: nn.Module):
         super().__init__(value=model)
 
@@ -72,10 +72,7 @@ class OptimizerStateHandler(StateHandler):
         pass
 
 
-_HANDLER_REGISTRY = [
-    (nn.Module, ModelStateHandler),
-    (optim.Optimizer, OptimizerStateHandler)
-]
+_HANDLER_REGISTRY = [(nn.Module, ModelStateHandler), (optim.Optimizer, OptimizerStateHandler)]
 
 
 def get_handler_registry():
@@ -111,7 +108,7 @@ class ObjectState(ABC):
 
     @staticmethod
     def restore(self):
-        """Restore the last commited across workers."""
+        """Restore the last committed across workers."""
         raise NotImplementedError("Honk honk! This isn't implemented yet.")
 
     @abstractmethod
@@ -121,12 +118,13 @@ class ObjectState(ABC):
 
     @abstractmethod
     def sync(self):
-        """Syncronize state across workers."""
+        """Synchronize state across workers."""
         raise NotImplementedError("Honk honk! This isn't implemented yet.")
 
 
 class RegularState(ObjectState):
     """For states that don't require special handlers."""
+
     def __init__(self, states: Dict[str, NonSpecialState]):
         self._saved_states = states
         for key, value in self._saved_states.items():
@@ -151,12 +149,8 @@ class RegularState(ObjectState):
 
 class State(RegularState):
     """A wrapper for state that can be synced across workers."""
-    def __init__(
-        self,
-        model: Optional[nn.Module] = None,
-        optim: Optional[optim.Optimizer] = None,
-        **kwargs
-    ):
+
+    def __init__(self, model: Optional[nn.Module] = None, optim: Optional[optim.Optimizer] = None, **kwargs):
         kwargs.update({"model": model, "optim": optim})
         handlers, regular_states = get_handlers(kwargs)
 
@@ -173,8 +167,8 @@ class State(RegularState):
         RegularState.commit(self)
 
     def restore(self):
-        """Restore the last commited across workers."""
-        # restore syncronous states that requires
+        """Restore the last committed across workers."""
+        # restore synchronous states that requires
         # a special handler
         for handler in self._handlers.values():
             handler.restore()

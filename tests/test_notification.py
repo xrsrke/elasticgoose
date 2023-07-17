@@ -1,6 +1,6 @@
-from elasticgoose.notification import NotificationManager
-
 import pytest
+
+from elasticgoose.notification import NotificationManager
 
 
 @pytest.mark.skip

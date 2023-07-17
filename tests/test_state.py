@@ -1,7 +1,7 @@
-from elasticgoose.state import ModelStateHandler, get_handlers, State
-
 import torch
 from torch import nn
+
+from elasticgoose.state import ModelStateHandler, State, get_handlers
 
 
 def test_get_handlers():
@@ -25,16 +25,18 @@ def test_commit_and_restore_model_state_handler():
     MODEL_WEIGHTS = model.state_dict().values()
 
     NEW_MODEL = nn.Sequential(nn.Linear(2, 2))
-    NEW_MODEL.load_state_dict({
-        "0.weight": torch.tensor([[1.0, 2.0], [3.0, 4.0]]),
-        "0.bias": torch.tensor([5.0, 6.0]),
-    })
+    NEW_MODEL.load_state_dict(
+        {
+            "0.weight": torch.tensor([[1.0, 2.0], [3.0, 4.0]]),
+            "0.bias": torch.tensor([5.0, 6.0]),
+        }
+    )
 
     handler = ModelStateHandler(model)
 
     assert handler.value == model
 
-    # set a new value, but haven't commited and then restore
+    # set a new value, but haven't committed and then restore
     handler.set_value(NEW_MODEL)
     handler.restore()
 
@@ -61,10 +63,7 @@ def test_init_state():
     model = nn.Sequential(nn.Linear(10, 10), nn.Linear(10, 10))
     optim = torch.optim.Adam(model.parameters(), lr=0.01)
 
-    state = State(
-        model, optim,
-        epoch=0, batch=0
-    )
+    state = State(model, optim, epoch=0, batch=0)
 
     assert state.model == model
     assert state.optim == optim
@@ -78,19 +77,18 @@ def test_commit_and_restore_state_single_node():
     EPOCH, BATCH = 2, 5
 
     NEW_MODEL = nn.Sequential(nn.Linear(2, 2))
-    NEW_MODEL.load_state_dict({
-        "0.weight": torch.tensor([[1.0, 2.0], [3.0, 4.0]]),
-        "0.bias": torch.tensor([5.0, 6.0]),
-    })
+    NEW_MODEL.load_state_dict(
+        {
+            "0.weight": torch.tensor([[1.0, 2.0], [3.0, 4.0]]),
+            "0.bias": torch.tensor([5.0, 6.0]),
+        }
+    )
 
     optim = torch.optim.Adam(model.parameters(), lr=0.01)
 
-    state = State(
-        model, optim,
-        epoch=EPOCH, batch=BATCH
-    )
+    state = State(model, optim, epoch=EPOCH, batch=BATCH)
 
-    # update the model, but hanve't commited and then restore
+    # update the model, but hanve't committed and then restore
     model.load_state_dict(NEW_MODEL.state_dict())
     state.batch += 1
     state.epoch += 1

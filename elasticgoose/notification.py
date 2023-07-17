@@ -2,7 +2,8 @@ from typing import Protocol
 
 
 class NotificationReceiver(Protocol):
-    def on_hosts_updated(self): pass
+    def on_hosts_updated(self):
+        pass
 
 
 class NotificationManager:
